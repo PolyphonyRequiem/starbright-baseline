@@ -172,6 +172,58 @@ Match the sensitivity of the conversation to the privacy of the channel.
 EOF
 
 hr
+bold "Optional craft skills (not loaded by default)"
+cat <<'EOF'
+Starbright ships with extra craft skills that aren't part of the baseline
+companion — staged in ./optional-skills/ and NOT auto-loaded. Install only
+the ones you want; each becomes active the next time you chat.
+
+  ssh-bootstrap-and-key-persistence    durable SSH access (Linux/Windows)
+  remote-command-execution-windows-linux  reliable remote command exec over SSH
+  kde-plasma-session-recovery          recover a frozen KDE Plasma desktop
+  browser-cdp-attach                   attach to your real Chrome via DevTools
+  local-corpus-fact-checking           grep a local doc/wiki mirror before claiming facts
+  discord-messaging                    send/read Discord DMs & channels
+  discord-message-registers            Discord-safe presentation registers
+  discord-history-synthesis            read & synthesize Discord channel history
+
+EOF
+OPTDIR="$HERMES_HOME/optional-skills"
+if [[ -d "$OPTDIR" ]]; then
+  read -rp "Install optional skills? [a]ll / [n]one / [p]ick  (default n): " OPT
+  case "${OPT:-n}" in
+    a|A|all)
+      for d in "$OPTDIR"/*/; do
+        [[ -d "$d" ]] || continue
+        name="$(basename "$d")"
+        # category subdir keeps the tree tidy; 'optional' is a fine catch-all
+        mkdir -p "$HERMES_HOME/skills/optional"
+        cp -r "$d" "$HERMES_HOME/skills/optional/$name"
+        echo "  + installed $name"
+      done
+      ;;
+    p|P|pick)
+      for d in "$OPTDIR"/*/; do
+        [[ -d "$d" ]] || continue
+        name="$(basename "$d")"
+        read -rp "  install '$name'? [y/N] " YN
+        if [[ "$YN" =~ ^[Yy]$ ]]; then
+          mkdir -p "$HERMES_HOME/skills/optional"
+          cp -r "$d" "$HERMES_HOME/skills/optional/$name"
+          echo "    + installed $name"
+        fi
+      done
+      ;;
+    *)
+      echo "  Skipped. Install later by copying any dir from optional-skills/ into skills/."
+      ;;
+  esac
+else
+  echo "  (no optional-skills/ directory found — skipping)"
+fi
+
+
+hr
 bold "Next steps"
 cat <<EOF
   1. Test it:            starbright-baseline chat -q "Say hi in one line." -Q
