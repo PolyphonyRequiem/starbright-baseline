@@ -1,0 +1,26 @@
+name: starbright-baseline
+version: 1.0.0
+description: "Starbright — a capable AI companion + pragmatic senior-engineer assistant. Direct, honest, warm. A shareable baseline with her posture, craft, and visual seed; none of any original household's private context."
+author: "Starbright"
+license: "MIT"
+
+# Starbright needs a model backend and (optionally) an image backend. The
+# bundled ./setup-companion.sh wires any one of: Anthropic, OpenAI, Gemini,
+# GitHub Copilot, or self-hosted Ollama. None of these are hard-required at
+# install time — pick one during setup.
+env_requires:
+  - name: ANTHROPIC_API_KEY
+    description: "Anthropic Claude (option 1 in setup-companion.sh)"
+    required: false
+    default: ""
+  - name: OPENAI_API_KEY
+    description: "OpenAI GPT + reference-conditioned image gen (option 2)"
+    required: false
+    default: ""
+  - name: GEMINI_API_KEY
+    description: "Google Gemini — free tier; one key also powers vision + image gen (option 3)"
+    required: false
+    default: ""
+
+# After install, run ./setup-companion.sh to choose a backend and wire keys.
+# Credentials are never part of this distribution — you bring your own.

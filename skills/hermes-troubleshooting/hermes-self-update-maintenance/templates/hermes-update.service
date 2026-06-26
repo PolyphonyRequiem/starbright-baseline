@@ -1,0 +1,36 @@
+[Unit]
+Description=Hermes Agent — one-shot self-update (stop gateway, git checkout target tag, reinstall deps, restart gateway)
+# Decoupled from the gateway: stopping the gateway mid-update must not kill the updater.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/.hermes/hermes-agent
+Environment="PATH=%h/.hermes/hermes-agent/venv/bin:%h/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="VIRTUAL_ENV=%h/.hermes/hermes-agent/venv"
+Environment="HERMES_HOME=%h/.hermes"
+# Pin the target per-run with:
+#   systemctl --user set-environment HERMES_UPDATE_TARGET=v2026.6.5
+# Default falls back to 'main' if unset.
+ExecStart=%h/.hermes/scripts/hermes_self_update.sh
+# Generous ceiling — a big-jump dep reinstall is slow.
+TimeoutStartSec=1800
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
+
+# --- Usage -------------------------------------------------------------------
+# 1. Put hermes_self_update.sh at ~/.hermes/scripts/ (chmod +x).
+# 2. Save this unit at ~/.config/systemd/user/hermes-update.service
+#    (replace %h literals if your systemd is old enough not to expand them;
+#    modern user units expand %h to $HOME).
+# 3. systemctl --user daemon-reload
+# 4. systemctl --user set-environment HERMES_UPDATE_TARGET=<tag>
+# 5. systemctl --user start hermes-update.service
+# 6. journalctl --user -u hermes-update.service -f
+#
+# NOTE: also lower TimeoutStopSec on hermes-gateway.service to 30 (from a
+# shipped default that may be 210) so the in-script gateway stop doesn't hang.

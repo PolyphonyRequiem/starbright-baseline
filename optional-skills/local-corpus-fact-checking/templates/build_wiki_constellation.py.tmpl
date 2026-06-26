@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+"""Template: build a constellation of skills from a mirrored markdown corpus.
+
+Copy this to ~/.hermes/scripts/build_<corpus>_constellation.py and customize:
+  - WIKI: path to the mirrored markdown corpus.
+  - SKILLS_ROOT: where to write the constellation.
+  - DOMAINS: list of (skill_name, [category_keywords], description).
+  - HEADER_RE: regex matching the corpus's category-header format.
+  - UMBRELLA_NAME: name of the router skill (e.g. 'valheim-wiki').
+
+The script is idempotent — rerunning regenerates the constellation cleanly.
+Prints a one-line summary to stdout (suitable for cron `no_agent=True` jobs).
+
+Battle-tested on a 1811-page Valheim Fandom mirror (2026-06). Achieved 12%
+misc bucket after one routing-rule iteration.
+"""
+from __future__ import annotations
+
+import re
+import sys
+from collections import defaultdict
+from pathlib import Path
+
+HOME = Path.home()
+# === CUSTOMIZE ===
+WIKI = HOME / "<corpus_root>" / "wiki" / "fandom"
+SKILLS_ROOT = HOME / ".hermes" / "skills" / "<corpus_name>"
+UMBRELLA_NAME = "<corpus>-wiki"
+
+# Domain routing. Order matters — first match wins per page.
+# Survey your corpus's category histogram before designing this:
+#   head -3 -q ~/<corpus>/*.md | grep -oP '_Categories: \K[^_]+' \
+#     | tr ',' '\n' | sed 's/^ *//;s/ *$//' | sort | uniq -c | sort -rn
+DOMAINS: list[tuple[str, list[str], str]] = [
+    # (skill_name, category_keywords, one-line description)
+    # ("<corpus>-foo", ["foo_kw1", "foo_kw2"], "Description of foo domain."),
+]
+
+# IMPORTANT: many wiki scrapers emit categories with internal underscores
+# (e.g. `Points_of_interest`). A naive `_Categories: ([^_]+?)_` regex stops
+# at the first internal underscore. Match through end-of-line instead:
+HEADER_RE = re.compile(r"^_Categories:\s*(.+?)_\s*$", re.MULTILINE)
+INTERNAL_ID_RE = re.compile(r"^### Internal ID\s*\n+([^\n]+)", re.MULTILINE)
+ITALIC_BLURB_RE = re.compile(r"^\*([^*\n][^\n]{4,160})\*\s*$", re.MULTILINE)
+# === END CUSTOMIZE ===
+
+
+def parse_page(path: Path) -> dict | None:
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return None
+    cats_m = HEADER_RE.search(text)
+    cats = [c.strip() for c in cats_m.group(1).split(",")] if cats_m else []
+    id_m = INTERNAL_ID_RE.search(text)
+    blurb_m = ITALIC_BLURB_RE.search(text)
+    return {
+        "path": path,
+        "title": path.stem.replace("_", " "),
+        "categories": [c for c in cats if c],
+        "internal_id": id_m.group(1).strip() if id_m else "",
+        "blurb": blurb_m.group(1).strip() if blurb_m else "",
+    }
+
+
+def route(categories: list[str]) -> str:
+    cats_lower = " ".join(categories).lower()
+    for skill_name, keywords, _desc in DOMAINS:
+        for kw in keywords:
+            if kw in cats_lower:
+                return skill_name
+    return f"{UMBRELLA_NAME.replace('-wiki', '')}-misc"
+
+
+def write_skill(skill_name: str, description: str, pages: list[dict]) -> None:
+    skill_dir = SKILLS_ROOT / skill_name
+    refs = skill_dir / "references"
+    refs.mkdir(parents=True, exist_ok=True)
+
+    pages_sorted = sorted(pages, key=lambda p: p["title"].lower())
+    rows = ["| Page | Internal ID | Blurb / Categories |",
+            "|------|-------------|--------------------|"]
+    for p in pages_sorted:
+        blurb = (p["blurb"] or ", ".join(p["categories"]))[:110]
+        rows.append(
+            f"| {p['title'].replace('|', '\\|')} "
+            f"| `{(p['internal_id'] or '').replace('|', '\\|')}` "
+            f"| {blurb.replace('|', '\\|')} |"
+        )
+    (refs / "index.md").write_text(
+        f"# {skill_name} — page index\n\n"
+        f"Auto-generated from `{WIKI}`. {len(pages)} pages.\n\n"
+        f"To read a page: `cat {WIKI}/<Page_Name>.md`\n\n"
+        + "\n".join(rows) + "\n",
+        encoding="utf-8",
+    )
+
+    sample = ", ".join(p["title"] for p in pages_sorted[:6])
+    (skill_dir / "SKILL.md").write_text(
+        f"""---
+name: {skill_name}
+description: {description} Covers {len(pages)} wiki pages including {sample}.
+---
+
+# {skill_name}
+
+Auto-generated from `{WIKI}`.
+
+## When to load
+
+Whenever you need a factual claim about this domain. **Never** rely on
+training-data memory when this corpus is available.
+
+## How to use
+
+1. Open `references/index.md` for the page lookup table.
+2. `cat {WIKI}/<Page_Name>.md` for full content (underscores for spaces).
+3. Full-text search: `grep -liE '<pattern>' {WIKI}/*.md`
+""",
+        encoding="utf-8",
+    )
+
+
+def write_umbrella(domain_counts: dict[str, int]) -> None:
+    umbrella_dir = SKILLS_ROOT / UMBRELLA_NAME
+    umbrella_dir.mkdir(parents=True, exist_ok=True)
+    rows = [
+        f"- **`{name}`** ({domain_counts.get(name, 0)} pages) — {desc}"
+        for name, _kw, desc in DOMAINS
+    ]
+    (umbrella_dir / "SKILL.md").write_text(
+        f"""---
+name: {UMBRELLA_NAME}
+description: Umbrella router for the corpus knowledge constellation. Load FIRST when answering any factual question for this domain, then load the specific domain skill.
+---
+
+# {UMBRELLA_NAME}
+
+Full corpus mirrored at `{WIKI}` ({sum(domain_counts.values())} pages).
+
+## Hard rule
+
+Before claiming ANY fact about this domain, check the mirror. Training-data
+memory is NOT reliable — verify on disk.
+
+## Domain routing
+
+{chr(10).join(rows)}
+
+## Fast-path search
+
+```bash
+ls {WIKI}/ | grep -iE '<term>'
+grep -liE '<term>' {WIKI}/*.md
+```
+""",
+        encoding="utf-8",
+    )
+
+
+def main() -> int:
+    if not WIKI.is_dir():
+        print(f"ERROR: corpus not at {WIKI}", file=sys.stderr)
+        return 2
+    by_domain: dict[str, list[dict]] = defaultdict(list)
+    total = skipped = 0
+    for md in sorted(WIKI.glob("*.md")):
+        page = parse_page(md)
+        if page is None:
+            skipped += 1
+            continue
+        by_domain[route(page["categories"])].append(page)
+        total += 1
+    counts = {}
+    for name, _kw, desc in DOMAINS:
+        pages = by_domain.get(name, [])
+        if pages:
+            write_skill(name, desc, pages)
+            counts[name] = len(pages)
+    misc_name = f"{UMBRELLA_NAME.replace('-wiki', '')}-misc"
+    if misc_name in by_domain:
+        write_skill(misc_name, "Miscellaneous corpus entries.", by_domain[misc_name])
+        counts[misc_name] = len(by_domain[misc_name])
+    write_umbrella(counts)
+    misc_pct = (counts.get(misc_name, 0) / total * 100.0) if total else 0.0
+    health = "✅" if misc_pct < 15.0 else "⚠️"
+    bits = ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
+    print(
+        f"{health} {UMBRELLA_NAME} constellation built: {total} pages "
+        f"({skipped} skipped), {len(counts)} domains, misc={misc_pct:.1f}%. {bits}"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

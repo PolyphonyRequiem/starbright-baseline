@@ -1,0 +1,53 @@
+# starbright-baseline — distribution seed. Keep this repo to CRAFT + POSTURE only.
+# Never commit secrets, user data, or runtime state.
+
+# --- secrets / credentials (must NEVER travel) ---
+.env
+.env.*
+auth.json
+auth.lock
+secrets/
+*.key
+*.pem
+
+# --- user data / memory (ship BLANK, never populated) ---
+memories/*
+!memories/.gitkeep
+sessions/*
+!sessions/.gitkeep
+cron/*
+!cron/.gitkeep
+plans/*
+!plans/.gitkeep
+workspace/*
+!workspace/.gitkeep
+skins/*
+!skins/.gitkeep
+home/*
+!home/.gitkeep
+
+# --- runtime state / caches / logs ---
+*.db
+*.db-shm
+*.db-wal
+*.lock
+logs/
+*.log
+audio_cache/
+image_cache/
+media_cache/
+cache/
+gateway_state.json
+channel_directory.json
+discord_threads.json
+processes.json
+.skills_prompt_snapshot.json
+.usage.json
+
+# --- the private contamination markers must NEVER be committed ---
+.contamination-markers
+
+# --- python / editor cruft ---
+__pycache__/
+*.pyc
+.DS_Store
