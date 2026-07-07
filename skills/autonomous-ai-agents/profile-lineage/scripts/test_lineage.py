@@ -263,5 +263,71 @@ class CliTests(unittest.TestCase):
         self.assertEqual(json.loads(r.stdout)["summary"]["conflict_count"], 1)
 
 
+def _find_posix_bash() -> str | None:
+    """Locate a POSIX bash that can run check-drift.sh.
+
+    On Windows a bare ``bash`` resolves to WSL's launcher, which fails with
+    ``execvpe(/bin/bash)`` when no distro is installed — so prefer git-bash's
+    real binary. Elsewhere plain ``bash`` on PATH is fine. Returns None when no
+    usable bash exists (the shell-wrapper tests then skip).
+    """
+    import shutil
+
+    candidates = [
+        shutil.which("bash"),
+        r"C:\Program Files\Git\usr\bin\bash.exe",
+        r"C:\Program Files\Git\bin\bash.exe",
+        "/usr/bin/bash",
+        "/bin/bash",
+    ]
+    for c in candidates:
+        if not c or not Path(c).exists():
+            continue
+        # WSL's bare 'bash' is on PATH but can't exec /bin/bash — probe it.
+        try:
+            probe = subprocess.run([c, "-c", "echo ok"], capture_output=True, text=True, timeout=15)
+        except Exception:
+            continue
+        if probe.returncode == 0 and probe.stdout.strip() == "ok":
+            return c
+    return None
+
+
+class ShellWrapperTests(unittest.TestCase):
+    """check-drift.sh is the git-free drift entry point; verify its exit codes
+    under a real POSIX bash (its actual runtime), not WSL's stub."""
+
+    def setUp(self):
+        self.bash = _find_posix_bash()
+        if not self.bash:
+            self.skipTest("no POSIX bash available (git-bash / bash) to run check-drift.sh")
+        self.tmp = Path(tempfile.mkdtemp())
+        self.script = str(HERE / "check-drift.sh")
+
+    def _sh(self, *args):
+        return subprocess.run([self.bash, self.script, *args], capture_output=True, text=True)
+
+    def test_check_drift_clean_dirty_regen(self):
+        d = _mkprofile(self.tmp, "p", {"SOUL.md": "v1"})
+        # baseline first so the wrapper has a manifest to compare against
+        subprocess.run([sys.executable, str(HERE / "lineage.py"), "manifest-gen", str(d)],
+                       capture_output=True, check=True)
+        # clean -> exit 0
+        self.assertEqual(self._sh(str(d)).returncode, 0)
+        # drifted -> exit 1, names the file
+        (d / "SOUL.md").write_text("v2", encoding="utf-8")
+        drift = self._sh(str(d))
+        self.assertEqual(drift.returncode, 1)
+        self.assertIn("SOUL.md", drift.stdout)
+        # --regen rewrites the baseline -> exit 0, clean again
+        self.assertEqual(self._sh("--regen", str(d)).returncode, 0)
+        self.assertEqual(self._sh(str(d)).returncode, 0)
+
+    def test_check_drift_missing_manifest_usage_error(self):
+        d = _mkprofile(self.tmp, "nomanifest", {"SOUL.md": "v1"})
+        # no manifest generated -> usage error (exit 2), not a false "clean"
+        self.assertEqual(self._sh(str(d)).returncode, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
