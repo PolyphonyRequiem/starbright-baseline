@@ -3,7 +3,7 @@ name: writing-great-skills
 description: Reference for authoring and editing skills well — the vocabulary and
   principles that make a skill predictable. Load when writing a new skill, reviewing an
   existing one, or deciding whether something should be model-invoked or user-invoked.
-version: 1.0.0
+version: 1.1.0
 author: Adapted by Starbright from Matt Pocock's writing-great-skills (MIT — github.com/mattpocock/skills)
 license: MIT
 metadata:
@@ -61,11 +61,22 @@ the agent needs them:
 A demanding completion criterion drives thorough **legwork** — the digging the agent does
 within the work — whether the skill is steps or reference.
 
+## Steering behaviour: prompt the positive
+
+**Negation backfires.** Steering by prohibition names the very thing you're banning —
+*don't think of an elephant* makes the elephant more available, not less. A skill that
+says "don't be verbose" has just put verbosity in the agent's working memory. Prompt the
+**positive**: state the target behaviour so the banned one is never spoken. Keep a
+prohibition only as a hard guardrail you genuinely can't phrase positively — and even
+then, pair it with what to do *instead* ("never fabricate output; report the blocker and
+try another route").
+
 ## Provenance
 
-Adapted from Matt Pocock's `writing-great-skills` (MIT, Copyright (c) 2026 Matt Pocock —
-github.com/mattpocock/skills). The predictability-as-root-virtue framing, the
-context-load/cognitive-load distinction, the router-skill cure, and the information-
-hierarchy ladder are his vocabulary, lightly condensed and Hermes-adapted (his original
-links a `GLOSSARY.md`; the bolded terms here are inlined). The Hermes `references/*.md`
-mechanics map onto his "external reference" tier.
+Adapted from Matt Pocock's `writing-great-skills` at **v1.1.0** (MIT, Copyright (c) 2026
+Matt Pocock — github.com/mattpocock/skills). The predictability-as-root-virtue framing, the
+context-load/cognitive-load distinction, the router-skill cure, the information-hierarchy
+ladder, and the v1.1.0 **Negation / prompt-the-positive** principle are his vocabulary,
+lightly condensed and Hermes-adapted (his original links a `GLOSSARY.md`; the bolded terms
+here are inlined). The Hermes `references/*.md` mechanics map onto his "external
+reference" tier.

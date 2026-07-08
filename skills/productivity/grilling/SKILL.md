@@ -3,7 +3,7 @@ name: grilling
 description: Use when the user is brainstorming, bouncing ideas around, or wants to
   stress-test a plan or design before building. Interview them relentlessly — one
   question at a time — until you reach genuine shared understanding.
-version: 1.0.0
+version: 1.1.0
 author: Adapted by Starbright from Matt Pocock's grilling (MIT — github.com/mattpocock/skills)
 license: MIT
 metadata:
@@ -38,16 +38,21 @@ that gap before a line of code is written.
 3. **For each question, give your recommended answer.** Don't just interrogate — propose.
    The user reacts faster to "I'd do X because Y — agree?" than to an open-ended prompt.
 
-4. **If a question can be answered by looking, look — don't ask.** Explore the codebase,
-   grep the docs/corpus, search past sessions. Never make the user repeat what's already
-   written down. (Pairs with `docs-before-reasoning`.)
+4. **If a question can be answered by looking, look — don't ask.** If a *fact* can
+   be found by exploring the codebase, grepping the docs/corpus, or searching past
+   sessions, look it up rather than asking. The *decisions*, though, are the user's —
+   put each one to them and wait for the answer. Never make the user repeat what's
+   already written down. (Pairs with `docs-before-reasoning`.)
 
 5. **Stop when alignment is real**, not when you run out of questions. The exit condition
-   is shared understanding — then hand off to a plan, a PRD, or the build itself.
+   is shared understanding — then hand off to a plan, a PRD, or the build itself. **Do
+   not enact the plan until the user confirms you've reached that shared understanding.**
 
 ## Provenance
 
-Adapted from Matt Pocock's `grilling` skill (MIT, Copyright (c) 2026 Matt Pocock —
-github.com/mattpocock/skills), near-verbatim — the one-question-at-a-time discipline and
-the recommend-an-answer mechanic are his. The brainstorming trigger framing and the
-look-don't-ask / docs-before-reasoning tie-in are our adaptation.
+Adapted from Matt Pocock's `grilling` skill at **v1.1.0** (MIT, Copyright (c) 2026 Matt
+Pocock — github.com/mattpocock/skills), near-verbatim — the one-question-at-a-time
+discipline and the recommend-an-answer mechanic are his, as is the v1.1.0 sharpening
+(look up *facts*, put *decisions* to the user; don't enact until alignment is confirmed).
+The brainstorming trigger framing and the look-don't-ask / docs-before-reasoning tie-in
+are our adaptation.
