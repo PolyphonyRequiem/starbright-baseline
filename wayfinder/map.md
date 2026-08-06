@@ -1,6 +1,7 @@
 # Map: A way of work for the Starbright system
 
 **Status:** charting complete, unwalked. Charted 2026-08-06.
+**Tracker:** tickets are GitHub issues on this repo. Index: [MAP issue #12](https://github.com/PolyphonyRequiem/starbright-baseline/issues/12). Frontier: #4, #5, #6, #7.
 
 ## Destination
 
